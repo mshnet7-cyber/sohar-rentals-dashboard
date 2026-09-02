@@ -1,0 +1,1 @@
+(()=>{const ids=['q','typeFilter','areaFilter','platformFilter','statusFilter'];ids.forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',()=>window.render&&window.render());});if(window.render)window.render();})();
