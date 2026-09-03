@@ -1,0 +1,20 @@
+(()=>{
+  const OBS='2026-09-03';
+  const r={'#':109,'النوع':'مبنى سكني','المنطقة':'فلج القبائل / صحار','التفاصيل':'مبنى سكني كامل للإيجار، 3 طوابق، مساحة 2800م²، مساحة الأرض 600م²، عقد إيجار سنوي واحد، شهرياً حسب الإعلان','السعر (ر.ع)':1800,'رقم التواصل':'931333XX','المنصة':'السوق المفتوح','رابط الإعلان':'https://om.opensooq.com/en/al-batinah/sohar/property','تاريخ الرصد':OBS,'تاريخ النشر':'2026-09-03 (قبل 5 ساعات)'};
+  if(!rows.some(x=>String(x['#'])==='109')) rows.push(r);
+  const addOpt=(id,val)=>{const e=document.getElementById(id);if(e&&!Array.from(e.options).some(o=>o.value===val)){const o=document.createElement('option');o.value=val;o.textContent=val;e.appendChild(o)}};
+  addOpt('typeFilter',r['النوع']); addOpt('areaFilter',r['المنطقة']); addOpt('platformFilter',r['المنصة']);
+  const full=rows.filter(x=>!String(x['رقم التواصل']||'').includes('XX')).length;
+  const masked=rows.length-full;
+  const unique=new Set(rows.map(x=>String(x['رقم التواصل']||'').trim()).filter(Boolean)).size;
+  const prices=rows.map(x=>Number(x['السعر (ر.ع)'])).filter(Number.isFinite);
+  const avg=prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:0;
+  const fmt=n=>Number(n).toLocaleString('ar-OM');
+  document.getElementById('total').textContent=fmt(rows.length);
+  document.getElementById('full').textContent=fmt(full);
+  document.getElementById('masked').textContent=fmt(masked);
+  document.getElementById('unique').textContent=fmt(unique);
+  document.getElementById('avg').textContent=fmt(Math.round(avg*10)/10)+' ر.ع';
+  if(window.render) window.render();
+  if(window.updateStatusPanel) window.updateStatusPanel();
+})();
