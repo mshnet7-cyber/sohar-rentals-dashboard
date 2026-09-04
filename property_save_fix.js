@@ -1,8 +1,25 @@
 (function(){
   const frame=document.getElementById('app');
+  function hookLeaflet(w,d){
+    try{
+      if(w.__soharMapHooked||!w.L||!w.L.map)return;
+      const orig=w.L.map;
+      w.L.map=function(){
+        const map=orig.apply(this,arguments);
+        try{
+          const id=arguments[0];
+          const el=typeof id==='string'?d.getElementById(id):id;
+          if(el)el.__sohar_leaflet_map=map;
+        }catch(e){}
+        return map;
+      };
+      w.__soharMapHooked=true;
+    }catch(e){console.error('leaflet hook',e)}
+  }
   function boot(){
     try{
       const w=frame.contentWindow,d=frame.contentDocument;if(!w||!d?.body)return;
+      hookLeaflet(w,d);
       w.saveProp=async function(enc){
         try{
           const id=decodeURIComponent(enc)||'manual-'+Date.now();
@@ -18,7 +35,8 @@
         }catch(e){console.error('property save fix',e);w.toast('تعذر حفظ العقار: '+(e?.message||e))}
       };
       [...d.querySelectorAll('.map')].forEach(mapEl=>{
-        const map=mapEl._leaflet_map;if(!map||mapEl.dataset.locateBound==='1')return;mapEl.dataset.locateBound='1';
+        const map=mapEl.__sohar_leaflet_map;if(!map||mapEl.dataset.locateBound==='1')return;
+        mapEl.dataset.locateBound='1';
         const b=d.createElement('button');b.type='button';b.textContent='موقعي';b.title='تحديد موقعي الحالي';b.style.cssText='position:absolute;z-index:1000;top:10px;left:10px;border:1px solid #355174;background:#10233b;color:#fff;border-radius:10px;padding:9px 12px;font:700 11px Tahoma,Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.3);cursor:pointer';
         b.onclick=()=>{if(!w.navigator.geolocation){w.alert('تحديد الموقع غير مدعوم');return}b.disabled=true;b.textContent='جارٍ التحديد...';w.navigator.geolocation.getCurrentPosition(p=>{const lat=p.coords.latitude,lng=p.coords.longitude;map.setView([lat,lng],16,{animate:true});if(mapEl.__loc)map.removeLayer(mapEl.__loc);mapEl.__loc=w.L.marker([lat,lng]).addTo(map).bindPopup('موقعي الحالي').openPopup();const pc=d.getElementById('pc');if(pc){pc.textContent='الإحداثيات: '+lat.toFixed(6)+', '+lng.toFixed(6);pc.dataset.lat=lat;pc.dataset.lng=lng}b.disabled=false;b.textContent='موقعي'},()=>{b.disabled=false;b.textContent='موقعي';w.alert('تعذر تحديد موقعك. تأكد من السماح للموقع في المتصفح.')},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})};
         mapEl.style.position='relative';mapEl.appendChild(b);
