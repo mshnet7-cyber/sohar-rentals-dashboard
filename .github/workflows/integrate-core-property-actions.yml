@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   repair:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +52,12 @@ function renderProps(){const q=$('pq').value.toLowerCase(),t=$('pt').value,a=$('
           Path('/tmp/crm.js').write_text('\n'.join(blocks),encoding='utf-8')
           PY
           node --check /tmp/crm.js
+          grep -q 'function renderProps' sohar_modern_crm_v2.html
+          grep -q 'function detailsProp' sohar_modern_crm_v2.html
+          grep -q 'موقعي الحالي' sohar_modern_crm_v2.html
+          ! grep -q 'property_actions.js' index.html
+          ! grep -q 'location_enhancement.js' index.html
+          ! grep -q 'property_save_fix.js' index.html
 
       - name: Commit final repair
         shell: bash
@@ -60,5 +65,4 @@ function renderProps(){const q=$('pq').value.toLowerCase(),t=$('pt').value,a=$('
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add sohar_modern_crm_v2.html index.html
-          git diff --cached --quiet || git commit -m 'Finalize property actions and location integration'
-          git push
+          git diff --cached --quiet || git commit -m 'Finalize CRM property actions and location controls' && git push || true
