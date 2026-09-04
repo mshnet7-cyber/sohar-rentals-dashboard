@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache">
+<title>صحار العقاري — لوحة موحدة</title>
+<style>
+:root{--bg:#08111f;--panel:#101c2e;--line:#263a58;--text:#f4f7fb;--muted:#9eb1c9;--blue:#2d8fff}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif}body{display:flex;flex-direction:column;overflow:hidden}
+.nav{height:64px;flex:0 0 64px;background:#0b1626;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:8px 14px;gap:10px;z-index:20}.brand{font-weight:800;font-size:18px;white-space:nowrap}.sub{font-size:11px;color:var(--muted);margin-top:2px}.tabs{display:flex;gap:7px;overflow:auto}.tab{border:1px solid var(--line);background:#101c2e;color:var(--muted);padding:9px 14px;border-radius:10px;cursor:pointer;white-space:nowrap;font:inherit}.tab.active{background:#17304d;border-color:#4c86b7;color:#fff}.frameWrap{flex:1;min-height:0;position:relative}.frame{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:#08111f}.frame.active{display:block}
+@media(max-width:700px){.nav{height:72px;flex-basis:72px;align-items:flex-start;padding:8px 10px}.brand{font-size:15px}.tabs{max-width:70vw}.tab{padding:8px 10px;font-size:12px}}
+</style></head>
+<body>
+<header class="nav"><div><div class="brand">صحار العقاري</div><div class="sub">الإعلانات • الملاك • المستأجرون • المطابقة</div></div><div class="tabs"><button class="tab active" data-target="ads">العقارات وتحليل السوق</button><button class="tab" data-target="crm">الملاك والمستأجرون CRM</button></div></header>
+<main class="frameWrap"><iframe id="ads" class="frame active" src="./sohar_cloud_dashboard_v2.html" title="لوحة العقارات وتحليل السوق"></iframe><iframe id="crm" class="frame" src="./sohar_crm.html" title="إدارة الملاك والمستأجرين"></iframe></main>
+<script>
+const tabs=[...document.querySelectorAll('.tab')],frames=[...document.querySelectorAll('.frame')];
+tabs.forEach(tab=>tab.addEventListener('click',()=>{const id=tab.dataset.target;tabs.forEach(x=>x.classList.toggle('active',x===tab));frames.forEach(f=>f.classList.toggle('active',f.id===id));localStorage.setItem('sohar_unified_tab',id)}));
+const saved=localStorage.getItem('sohar_unified_tab');if(saved){const t=tabs.find(x=>x.dataset.target===saved);if(t)t.click()}
+</script></body></html>
