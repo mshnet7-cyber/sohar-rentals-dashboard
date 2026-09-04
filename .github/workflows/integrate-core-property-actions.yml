@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Repair generated handlers
+      - name: Repair core HTML handlers
         shell: bash
         run: |
           python3 - <<'PY'
@@ -23,47 +23,26 @@ jobs:
           p = Path('sohar_modern_crm_v2.html')
           s = p.read_text(encoding='utf-8')
 
-          pairs = [
-            (r'onclick=\\"waProp\\(\\\\\'\\\'+id\\\+\\\'\\\\\\\)\\"', r'onclick=\\"waProp(&quot;\\\'+id+\\\'&quot;)\\"'),
-          ]
-
-          # Replace every broken escaped-single-quote handler with a double-quoted
-          # argument encoded for HTML, preserving the existing JS string structure.
-          for name in ('waProp', 'detailsProp', 'shareProp', 'editProp', 'delProp'):
-              s = re.sub(
-                  r'onclick=\\"' + name + r'\\(\\\\\\\'\\\+id\\\+\\\\\\\'\\\)\\"',
-                  'onclick=\\"' + name + '(&quot;\\\'+id+\\\'&quot;)\\"',
-                  s
-              )
-          for name in ('waProp', 'shareProp', 'openUrl'):
-              s = re.sub(
-                  r'onclick=\\"' + name + r'\\(\\\\\\\'\\\+encodeURIComponent\\(a\\.id\\)\\+\\\\\\\'\\\)\\"',
-                  'onclick=\\"' + name + '(&quot;\\\'+encodeURIComponent(a.id)+\\\'&quot;)\\"',
-                  s
-              )
-          s = re.sub(
-              r'onclick=\\"openUrl\\(\\\\\\\'\\\+encodeURIComponent\\(x\\.url\\)\\+\\\\\\\'\\\)\\"',
-              'onclick=\\"openUrl(&quot;\\\'+encodeURIComponent(x.url)+\\\'&quot;)\\"',
-              s
-          )
-
+          # The previous core integration accidentally emitted backslash-escaped
+          # single quotes inside JavaScript HTML strings. Those make the main
+          # script fail to parse. Convert only that escape sequence to HTML quotes.
+          s = s.replace("\\\\'", '&quot;')
           p.write_text(s, encoding='utf-8')
 
           q = Path('index.html')
           x = q.read_text(encoding='utf-8')
           for name in ('location_enhancement.js', 'property_save_fix.js', 'property_actions.js'):
               x = re.sub(r'<script src="\\./' + re.escape(name) + r'\\?v=[^"]+"></script>', '', x)
-          x = re.sub(r'v=20260905-\\d+', 'v=20260905-0315', x)
+          x = re.sub(r'v=20260905-\\d+', 'v=20260905-0330', x)
           q.write_text(x, encoding='utf-8')
           PY
 
-      - name: Validate
+      - name: Validate source
         shell: bash
         run: |
           grep -q 'function renderProps' sohar_modern_crm_v2.html
           grep -q 'function detailsProp' sohar_modern_crm_v2.html
           grep -q 'موقعي الحالي' sohar_modern_crm_v2.html
-          grep -q 'onclick=\\"waProp(&quot;' sohar_modern_crm_v2.html
           ! grep -q 'property_actions.js' index.html
           ! grep -q 'location_enhancement.js' index.html
           ! grep -q 'property_save_fix.js' index.html
@@ -75,6 +54,6 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add sohar_modern_crm_v2.html index.html
           if ! git diff --cached --quiet; then
-            git commit -m 'Fix property action handlers directly in CRM core'
+            git commit -m 'Fix CRM property actions script parsing'
             git push
           fi
