@@ -13,8 +13,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run repair script
+      - name: Run legacy core repair
         run: python3 scripts/repair_crm.py
+      - name: Run final navigation repair
+        run: python3 scripts/finalize_crm_navigation.py
+      - name: Validate embedded JavaScript
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('sohar_modern_crm_v2.html').read_text(encoding='utf-8')
+          blocks=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S)
+          Path('/tmp/sohar_crm.js').write_text('\n'.join(blocks),encoding='utf-8')
+          PY
+          node --check /tmp/sohar_crm.js
       - name: Commit repaired files
         run: |
           git config user.name github-actions[bot]
@@ -23,6 +36,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'No repair changes needed'
           else
-            git commit -m 'Repair CRM property actions and location controls'
+            git commit -m 'Finalize CRM navigation and property actions'
             git push
           fi
