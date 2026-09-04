@@ -1,50 +1,68 @@
-name: Integrate core property actions
+name: Fix core property action handlers
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  integrate:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch CRM core
+      - name: Fix inline property handlers and remove legacy layers
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           p=Path('sohar_modern_crm_v2.html')
           s=p.read_text(encoding='utf-8')
-          start=s.find('function renderProps(){')
-          end=s.find('function renderOwners(){', start)
-          if start<0 or end<0: raise SystemExit('renderProps boundaries not found')
-          old=s[start:end]
-          helper="""function propPhone(v){let p=String(v||'').replace(/[^0-9]/g,'');if(p.startsWith('00'))p=p.slice(2);if(p.length===8&&/^[79]/.test(p))p='968'+p;if(p.startsWith('968968'))p=p.slice(3);return p}\nfunction waProp(id){const a=D.ads.find(x=>String(x.id)===String(id)),p=propPhone(a?.phone);if(p)window.open('https://wa.me/'+p,'_blank');else toast('لا يوجد رقم هاتف صالح لهذا العقار')}\nfunction shareProp(id){const a=D.ads.find(x=>String(x.id)===String(id));if(!a)return;const url=location.origin+location.pathname+'?property='+encodeURIComponent(String(a.id));(async()=>{try{if(navigator.share){await navigator.share({title:a.name||'عقار في صحار',text:[a.name||'عقار',a.area||'',a.type||'',a.price?(a.price+' '+(a.period||'')):''].filter(Boolean).join(' • '),url});return}}catch(e){if(e?.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast('تم نسخ رابط العقار')}catch(e){try{prompt('رابط مشاركة العقار',url)}catch(_){}}})()}\nfunction detailsProp(id){const a=D.ads.find(x=>String(x.id)===String(id));if(!a)return;const m=mon(a),b=bench(a),o=owner(a),p=propPhone(a.phone);openModal('تفاصيل العقار — '+(a.name||'عقار'),'<div class=\\"prop-details-grid\\"><div class=\\"prop-detail\\"><b>النوع</b><span>'+esc(a.type||'—')+'</span></div><div class=\\"prop-detail\\"><b>المنطقة</b><span>'+esc(a.area||'—')+'</span></div><div class=\\"prop-detail\\"><b>السعر</b><span>'+esc(a.price||'—')+' '+esc(a.period||'')+'</span></div><div class=\\"prop-detail\\"><b>شهري تقريبي</b><span>'+(m?Math.round(m)+' ر.ع':'—')+'</span></div><div class=\\"prop-detail\\"><b>مرجع السوق</b><span>'+(b?Math.round(b)+' ر.ع':'—')+'</span></div><div class=\\"prop-detail\\"><b>المالك</b><span>'+esc(o?.owner_name||'غير مربوط')+'</span></div><div class=\\"prop-detail\\"><b>الهاتف</b><span>'+esc(a.phone||'—')+'</span></div></div><div class=\\"prop-detail\\"><b>التفاصيل</b><span>'+esc(a.details||'لا توجد تفاصيل')+'</span></div><div class=\\"actions-row\\">'+(p?'<button class=\\"btn good\\" onclick=\\"waProp(\\\\''+encodeURIComponent(a.id)+'\\\\')\\">واتساب</button><a class=\\"btn\\" href=\\"tel:+'+p+'\\">اتصال</a>':'')+(a.url?'<button class=\\"btn\\" onclick=\\"openUrl(\\\\''+encodeURIComponent(a.url)+'\\\\')\\">فتح الإعلان</button>':'')+'<button class=\\"btn cyan\\" onclick=\\"shareProp(\\\\''+encodeURIComponent(a.id)+'\\\\')\\">مشاركة</button><button class=\\"btn\\" onclick=\\"closeModal()\\">إغلاق</button></div>')}\n"""
-          new_render="""function renderProps(){const q=$('pq').value.toLowerCase(),t=$('pt').value,a=$('pa').value,d=$('pd').value;const arr=D.ads.filter(x=>x.active!==false).filter(x=>!q||[x.name,x.area,x.phone,x.details].join(' ').toLowerCase().includes(q)).filter(x=>!t||x.type===t).filter(x=>!a||x.area===a).filter(x=>!d||(d==='strong'&&score(x)>=75)||(d==='below'&&bench(x)&&mon(x)<bench(x))||(d==='ready'&&owner(x)?.marketing_status==='ready'));$('prows').innerHTML=arr.map(x=>{const m=mon(x),b=bench(x),df=b&&m?(m-b)/b*100:null,o=owner(x),sc=score(x),p=propPhone(x.phone),id=encodeURIComponent(x.id);return '<tr><td>'+esc(x.name||'عقار')+' <span class=\\"muted\\">#'+esc(x.id)+'</span></td><td>'+esc(x.type||'—')+'</td><td>'+esc(x.area||'—')+'</td><td>'+esc(x.price||'—')+' '+esc(x.period||'')+'</td><td>'+(m?Math.round(m):'—')+'</td><td>'+(b?Math.round(b):'—')+'</td><td>'+(df!=null?(df>0?'+':'')+Math.round(df)+'%':'—')+'</td><td><span class=\\"score '+(sc>=75?'good':sc>=55?'yellow':'red')+'\\">'+sc+'</span></td><td>'+esc(o?.owner_name||'غير مربوط')+'</td><td>'+age(x)+' يوم</td><td>'+esc(x.platform||'—')+'</td><td><div class=\\"prop-actions\\" style=\\"display:flex;gap:5px;flex-wrap:wrap\\">'+(p?'<button class=\\"btn good\\" onclick=\\"waProp(\\\\''+id+'\\\\')\\">واتساب</button><a class=\\"btn\\" href=\\"tel:+'+p+'\\">اتصال</a>':'')+'<button class=\\"btn\\" onclick=\\"detailsProp(\\\\''+id+'\\\\')\\">تفاصيل</button><button class=\\"btn cyan\\" onclick=\\"shareProp(\\\\''+id+'\\\\')\\">مشاركة</button><button class=\\"btn\\" onclick=\\"editProp(\\\\''+id+'\\\\')\\">تعديل</button><button class=\\"btn bad\\" onclick=\\"delProp(\\\\''+id+'\\\\')\\">حذف</button>'+(x.url?'<button class=\\"btn\\" onclick=\\"openUrl(\\\\''+encodeURIComponent(x.url)+'\\\\')\\">فتح</button>':'')+'</div></td></tr>'}).join('')||'<tr><td colspan=\\"12\\" class=\\"empty\\">لا توجد عقارات</td></tr>'}\n"""
-          s=s[:start]+helper+new_render+s[end:]
-          marker='<div id="pmap" class="map"></div><div id="pc" class="muted">'
-          if marker not in s: raise SystemExit('location marker not found')
-          s=s.replace(marker,'<div id="pmap" class="map"></div><button id="pLocate" class="btn cyan" type="button" style="margin-top:8px">موقعي الحالي</button><div id="pc" class="muted">',1)
-          marker2="setTimeout(()=>pm.invalidateSize(),80)}async function up(file,id){"
-          if marker2 not in s: raise SystemExit('map end marker not found')
-          add="$('pLocate').onclick=()=>{if(!navigator.geolocation){toast('تحديد الموقع غير مدعوم');return}navigator.geolocation.getCurrentPosition(pos=>{const lat=pos.coords.latitude,lng=pos.coords.longitude;pm.setView([lat,lng],16);if(mk)mk.setLatLng([lat,lng]);else mk=L.marker([lat,lng]).addTo(pm);$('pc').textContent='الإحداثيات: '+lat.toFixed(6)+', '+lng.toFixed(6);$('pc').dataset.lat=lat;$('pc').dataset.lng=lng},()=>toast('تعذر تحديد موقعك'),{enableHighAccuracy:true,timeout:12000,maximumAge:30000})};"
-          s=s.replace(marker2,add+marker2,1)
+          # The previous generated HTML used escaped single quotes inside JS strings.
+          # Replace those handlers with data-id based handlers, which are valid in all browsers.
+          replacements = {
+            'onclick=\\"waProp(\\\\\\\\\''+\'': 'onclick=\\"waProp(this.dataset.id)\\" data-id=\\"',
+          }
+          # Target exact handler fragments used by the previous integration.
+          s=s.replace('onclick=\\"waProp(\\\\\'\'+id+\'\\\\\')\\"', 'onclick=\\"waProp(this.dataset.id)\\" data-id=\\"\'+id+\'\\"')
+          s=s.replace('onclick=\\"detailsProp(\\\\\'\'+id+\'\\\\\')\\"', 'onclick=\\"detailsProp(this.dataset.id)\\" data-id=\\"\'+id+\'\\"')
+          s=s.replace('onclick=\\"shareProp(\\\\\'\'+id+\'\\\\\')\\"', 'onclick=\\"shareProp(this.dataset.id)\\" data-id=\\"\'+id+\'\\"')
+          s=s.replace('onclick=\\"editProp(\\\\\'\'+id+\'\\\\\')\\"', 'onclick=\\"editProp(this.dataset.id)\\" data-id=\\"\'+id+\'\\"')
+          s=s.replace('onclick=\\"delProp(\\\\\'\'+id+\'\\\\\')\\"', 'onclick=\\"delProp(this.dataset.id)\\" data-id=\\"\'+id+\'\\"')
+          # Details modal uses a.id/a.url rather than id.
+          s=s.replace('onclick=\\"waProp(\\\\\'\'+encodeURIComponent(a.id)+\'\\\\\')\\"', 'onclick=\\"waProp(this.dataset.id)\\" data-id=\\"\'+encodeURIComponent(a.id)+\'\\"')
+          s=s.replace('onclick=\\"shareProp(\\\\\'\'+encodeURIComponent(a.id)+\'\\\\\')\\"', 'onclick=\\"shareProp(this.dataset.id)\\" data-id=\\"\'+encodeURIComponent(a.id)+\'\\"')
+          s=s.replace('onclick=\\"openUrl(\\\\\'\'+encodeURIComponent(a.url)+\'\\\\\')\\"', 'onclick=\\"openUrl(this.dataset.url)\\" data-url=\\"\'+encodeURIComponent(a.url)+\'\\"')
+          # URL opening in the table.
+          s=s.replace('onclick=\\"openUrl(\\\\\'\'+encodeURIComponent(x.url)+\'\\\\\')\\"', 'onclick=\\"openUrl(this.dataset.url)\\" data-url=\\"\'+encodeURIComponent(x.url)+\'\\"')
           p.write_text(s,encoding='utf-8')
-          q=Path('index.html'); x=q.read_text(encoding='utf-8')
+
+          q=Path('index.html')
+          x=q.read_text(encoding='utf-8')
           for name in ('location_enhancement.js','property_save_fix.js','property_actions.js'):
-            x=re.sub(r'<script src="\\./'+re.escape(name)+r'\\?v=[^"]+"></script>','',x)
-          x=re.sub(r'v=20260905-\\d+', 'v=20260905-0245', x)
+            x=re.sub(r'<script src="\\./'+re.escape(name)+r'\\?v=[^"]+"></script>', '', x)
+          x=re.sub(r'v=20260905-\\d+', 'v=20260905-0300', x)
           q.write_text(x,encoding='utf-8')
           PY
-      - name: Commit changes
+      - name: Validate source
+        shell: bash
+        run: |
+          grep -q 'function renderProps' sohar_modern_crm_v2.html
+          grep -q 'موقعي الحالي' sohar_modern_crm_v2.html
+          grep -q 'waProp(this.dataset.id)' sohar_modern_crm_v2.html
+          ! grep -q 'property_actions.js' index.html
+          ! grep -q 'location_enhancement.js' index.html
+          ! grep -q 'property_save_fix.js' index.html
+      - name: Commit and push
+        shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add sohar_modern_crm_v2.html index.html
-          git diff --cached --quiet || git commit -m 'Integrate property actions directly in CRM core'
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m 'Fix property action handlers in CRM core'
+            git push
+          fi
