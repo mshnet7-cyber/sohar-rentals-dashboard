@@ -1,0 +1,20 @@
+{
+  "name": "صحار العقاري",
+  "short_name": "صحار العقاري",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "description": "لوحة CRM العقاري المتكاملة لإعلانات صحار والملاك والمستأجرين والمطابقة.",
+  "icons": [
+    {"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ],
+  "shortcuts": [
+    {"name":"كل الإعلانات","short_name":"الإعلانات","url":"/#properties","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]},
+    {"name":"إضافة عقار","short_name":"إضافة","url":"/#add-property","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]}
+  ]
+}
