@@ -1,0 +1,44 @@
+from pathlib import Path
+import re
+
+core = Path('sohar_modern_crm_v2.html')
+s = core.read_text(encoding='utf-8')
+
+start = s.find('function propPhone(')
+end = s.find('function renderOwners(){', start)
+if start < 0 or end < 0:
+    raise SystemExit('property function boundaries not found')
+
+block = r'''function propPhone(v){let p=String(v||'').replace(/[^0-9]/g,'');if(p.startsWith('00'))p=p.slice(2);if(p.length===8&&/^[79]/.test(p))p='968'+p;if(p.startsWith('968968'))p=p.slice(3);return p}
+function waProp(id){const a=D.ads.find(x=>String(x.id)===String(id)),p=propPhone(a&&a.phone);if(p)window.open('https://wa.me/'+p,'_blank');else toast('لا يوجد رقم هاتف صالح لهذا العقار')}
+function callProp(id){const a=D.ads.find(x=>String(x.id)===String(id)),p=propPhone(a&&a.phone);if(p)window.location.href='tel:+'+p;else toast('لا يوجد رقم هاتف صالح لهذا العقار')}
+function shareProp(id){const a=D.ads.find(x=>String(x.id)===String(id));if(!a)return;const url=location.origin+location.pathname+'?property='+encodeURIComponent(String(a.id));const text=[a.name||'عقار',a.area||'',a.type||'',a.price?(a.price+' '+(a.period||'')):''].filter(Boolean).join(' • ');(async()=>{try{if(navigator.share){await navigator.share({title:a.name||'عقار في صحار',text,url});return}}catch(e){if(e&&e.name==='AbortError')return}try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url);toast('تم نسخ رابط العقار');return}}catch(e){}try{const ta=document.createElement('textarea');ta.value=url;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');ta.remove();toast('تم نسخ رابط العقار')}catch(e){window.prompt('رابط مشاركة العقار',url)}})()}
+function detailsProp(id){const a=D.ads.find(x=>String(x.id)===String(id));if(!a)return;const m=mon(a),b=bench(a),o=owner(a),p=propPhone(a.phone);openModal('تفاصيل العقار — '+(a.name||'عقار'),`<div class="prop-detail"><b>النوع</b><span>${esc(a.type||'—')}</span></div><div class="prop-detail"><b>المنطقة</b><span>${esc(a.area||'—')}</span></div><div class="prop-detail"><b>السعر</b><span>${esc(a.price||'—')} ${esc(a.period||'')}</span></div><div class="prop-detail"><b>شهري تقريبي</b><span>${m?Math.round(m)+' ر.ع':'—'}</span></div><div class="prop-detail"><b>مرجع السوق</b><span>${b?Math.round(b)+' ر.ع':'—'}</span></div><div class="prop-detail"><b>المالك</b><span>${esc(o&&o.owner_name||'غير مربوط')}</span></div><div class="prop-detail"><b>الهاتف</b><span>${esc(a.phone||'—')}</span></div><div class="prop-detail"><b>التفاصيل</b><span>${esc(a.details||'لا توجد تفاصيل')}</span></div><div class="actions-row">${p?`<button class="btn good" onclick="waProp('${encodeURIComponent(a.id)}')">واتساب</button><button class="btn" onclick="callProp('${encodeURIComponent(a.id)}')">اتصال</button>`:''}${a.url?`<button class="btn" onclick="openUrl('${encodeURIComponent(a.url)}')">فتح الإعلان</button>`:''}<button class="btn cyan" onclick="shareProp('${encodeURIComponent(a.id)}')">مشاركة</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`)}
+function renderProps(){const q=$('pq').value.toLowerCase(),t=$('pt').value,a=$('pa').value,d=$('pd').value;const arr=D.ads.filter(x=>x.active!==false).filter(x=>!q||[x.name,x.area,x.phone,x.details].join(' ').toLowerCase().includes(q)).filter(x=>!t||x.type===t).filter(x=>!a||x.area===a).filter(x=>!d||(d==='strong'&&score(x)>=75)||(d==='below'&&bench(x)&&mon(x)<bench(x))||(d==='ready'&&owner(x)&&owner(x).marketing_status==='ready'));$('prows').innerHTML=arr.map(x=>{const m=mon(x),b=bench(x),df=b&&m?(m-b)/b*100:null,o=owner(x),sc=score(x),p=propPhone(x.phone),id=encodeURIComponent(x.id);return `<tr><td>${esc(x.name||'عقار')} <span class="muted">#${esc(x.id)}</span></td><td>${esc(x.type||'—')}</td><td>${esc(x.area||'—')}</td><td>${esc(x.price||'—')} ${esc(x.period||'')}</td><td>${m?Math.round(m):'—'}</td><td>${b?Math.round(b):'—'}</td><td>${df!=null?(df>0?'+':'')+Math.round(df)+'%':'—'}</td><td><span class="score ${sc>=75?'good':sc>=55?'yellow':'red'}">${sc}</span></td><td>${esc(o&&o.owner_name||'غير مربوط')}</td><td>${age(x)} يوم</td><td>${esc(x.platform||'—')}</td><td><div class="prop-actions" style="display:flex;gap:5px;flex-wrap:wrap">${p?`<button class="btn good" onclick="waProp('${id}')">واتساب</button><button class="btn" onclick="callProp('${id}')">اتصال</button>`:''}<button class="btn" onclick="detailsProp('${id}')">تفاصيل</button><button class="btn cyan" onclick="shareProp('${id}')">مشاركة</button><button class="btn" onclick="editProp('${id}')">تعديل</button><button class="btn bad" onclick="delProp('${id}')">حذف</button>${x.url?`<button class="btn" onclick="openUrl('${encodeURIComponent(x.url)}')">فتح</button>`:''}</div></td></tr>`}).join('')||'<tr><td colspan="12" class="empty">لا توجد عقارات</td></tr>'}
+'''
+
+s = s[:start] + block + s[end:]
+
+# Ensure current-location control exists in the property form.
+marker = '<div id="pmap" class="map"></div><div id="pc" class="muted">'
+if marker in s:
+    s = s.replace(marker, '<div id="pmap" class="map"></div><button id="pLocate" class="btn cyan" type="button" style="margin-top:8px">موقعي الحالي</button><div id="pc" class="muted">', 1)
+
+# Ensure the current-location handler exists inside propForm.
+needle = "setTimeout(()=>pm.invalidateSize(),80)}async function up(file,id){"
+if needle in s and "$:'pLocate'" not in s:
+    handler = "$('pLocate').onclick=()=>{if(!navigator.geolocation){toast('تحديد الموقع غير مدعوم');return}navigator.geolocation.getCurrentPosition(pos=>{const lat=pos.coords.latitude,lng=pos.coords.longitude;pm.setView([lat,lng],16);if(mk)mk.setLatLng([lat,lng]);else mk=L.marker([lat,lng]).addTo(pm);$('pc').textContent='الإحداثيات: '+lat.toFixed(6)+', '+lng.toFixed(6);$('pc').dataset.lat=lat;$('pc').dataset.lng=lng},()=>toast('تعذر تحديد موقعك'),{enableHighAccuracy:true,timeout:12000,maximumAge:30000})};"
+    s = s.replace(needle, handler + needle, 1)
+
+core.write_text(s, encoding='utf-8')
+
+idx = Path('index.html')
+x = idx.read_text(encoding='utf-8')
+for name in ('location_enhancement.js','property_save_fix.js','property_actions.js'):
+    x = re.sub(r'<script src="\./'+re.escape(name)+r'(?:\?v=[^"]+)?"></script>', '', x)
+x = re.sub(r'v=20260905-\d+', 'v=20260905-0315', x)
+idx.write_text(x, encoding='utf-8')
+
+# Syntax-check the embedded JavaScript.
+blocks = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, re.S)
+Path('/tmp/sohar_crm.js').write_text('\n'.join(blocks), encoding='utf-8')
