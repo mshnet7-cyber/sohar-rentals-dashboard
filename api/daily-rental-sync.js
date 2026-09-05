@@ -11,13 +11,13 @@ const SOURCES = [
   ['Sakan','https://sakan.co/en/villas-for-rent/sohar']
 ];
 const H = { 'user-agent':'Mozilla/5.0 (compatible; SoharRentalIndexer/1.0; +https://sohar-rentals.vercel.app/)', 'accept-language':'ar,en;q=0.8' };
-function clean(x){return String(x??'').replace(/&nbsp;|\u00a0/gi,' ').replace(/&amp;/gi,'&').replace(/&#39;/gi,"'").replace(/&quot;/gi,'"').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim()}
+function clean(x){return String(x??'').replace(/&nbsp;|\u00a0/gi,' ').replace(/&amp;/gi,'&').replace(/&#39;/gi,"'").replace(/&quot;/gi,'"').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}
 function abs(base,href){try{return new URL(href,base).href}catch{return ''}}
 function escRx(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
 function stableId(source,url){const u=new URL(url);const raw=`${source}|${u.hostname}|${u.pathname}`.toLowerCase();let h=2166136261;for(let i=0;i<raw.length;i++){h^=raw.charCodeAt(i);h=Math.imul(h,16777619)}return `${source.toLowerCase()}-${(h>>>0).toString(36)}-${u.pathname.split('/').filter(Boolean).pop()?.slice(0,70)||'listing'}`}
 function inferType(t){t=t.toLowerCase();if(/warehouse|مخزن|مستودع/.test(t))return'مخزن';if(/office|مكتب/.test(t))return'مكتب';if(/building|عمارة|عماره|مبنى/.test(t))return'مبنى';if(/villa|فيلا/.test(t))return'فيلا';if(/room|غرفة/.test(t))return'غرفة';if(/studio|استوديو/.test(t))return'استوديو';return'شقة'}
 function inferPeriod(t){t=t.toLowerCase();if(/daily|يومي/.test(t))return'يومي';if(/weekly|أسبوعي|اسبوعي/.test(t))return'أسبوعي';if(/yearly|annual|سنوي/.test(t))return'سنوي';return'شهري'}
-function price(t){const hits=[...t.matchAll(/(?:OMR|ريال(?: عماني)?)[^0-9]{0,8}(\d{1,5}(?:\.\d+)?)/gi),...[...t.matchAll(/\b(\d{2,5})(?:\s*(?:OMR|ريال))?\b/gi)];const vals=hits.map(m=>Number(m[1])).filter(n=>n>=5&&n<=50000);return vals.length?String(vals[0]):''}
+function price(t){const vals=[...t.matchAll(/(?:OMR|ريال(?: عماني)?)[^0-9]{0,8}(\d{1,5}(?:\.\d+)?)/gi),...t.matchAll(/\b(\d{2,5})(?:\s*(?:OMR|ريال))?\b/gi)].map(m=>Number(m[1])).filter(n=>n>=5&&n<=50000);return vals.length?String(vals[0]):''}
 function area(t){const a=['Al Tarif','At Turayf','Al Hambar','Alhambar','Al Multaqa','Falaj Al Qabail','As Suwayhrah','Al Wiqaybah','Ghayl Ash Shabul','Al Ghushbah','Awtib','Sohar Corniche','الطريف','الحمر','المتلقى','الملتقى','فلج القبائل','السويحرة','الويقبية','غضي الشبول','الغشبة','عوتب','كورنيش صحار'];for(const x of a)if(new RegExp(escRx(x),'i').test(t))return x;return'صحار'}
 function phone(t){const m=t.match(/(?:\+968\s*)?(?:\d[\s-]?){8,10}/);if(!m)return'';const d=m[0].replace(/\D/g,'');return d.replace(/^968/,'').length===8?d.replace(/^968/,''):''}
 function published(html){const ms=[/datePublished["'\s:=>]+["']([^"']+)/i,/article:published_time["'\s]+content=["']([^"']+)/i,/published_time["'\s:=>]+["']([^"']+)/i];for(const r of ms){const m=html.match(r);if(m&&!Number.isNaN(Date.parse(m[1])))return new Date(m[1]).toISOString()}return null}
@@ -28,7 +28,7 @@ function candidates(html,source,base){const out=[];const re=/<a\b[^>]*href=["'](
 async function get(url){const r=await fetch(url,{headers:H,redirect:'follow'});const html=await r.text();if(!r.ok)throw new Error(`HTTP ${r.status}`);return html}
 async function rest(path,opts={}){const r=await fetch(`${REST}/${path}`,{...opts,headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json',Prefer:'return=representation',...(opts.headers||{})}});const txt=await r.text();if(!r.ok)throw new Error(`Supabase ${r.status}: ${txt.slice(0,500)}`);return txt?JSON.parse(txt):null}
 async function writeRun(row){try{return await rest('sohar_ingestion_runs',{method:'POST',body:JSON.stringify(row)})}catch(e){return null}}
-export default async function handler(req,res){
+module.exports = async function handler(req,res){
   const started=new Date().toISOString();
   const current=await rest('sohar_ads?select=id,url,first_seen,published_at,active');
   const existing=new Map((current||[]).map(x=>[String(x.id),x]));
