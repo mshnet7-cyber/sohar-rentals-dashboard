@@ -1,4 +1,4 @@
-const oidcToken=async()=>{const {getVercelOidcToken}=await import('@vercel/oidc');return getVercelOidcToken({audience:'https://vercel.com/mshnet7-4051'})};
+const oidcToken=async()=>{const {getVercelOidcToken}=await import('@vercel/oidc');return getVercelOidcToken({project:'sohar-rentals',team:'mshnet7-4051'})};
 
 const SUPABASE_URL='https://jwspwefzpsleovjuifxi.supabase.co';
 const INGEST_URL=`${SUPABASE_URL}/functions/v1/sohar-rentals-ingest`;
