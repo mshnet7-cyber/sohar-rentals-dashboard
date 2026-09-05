@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://jwspwefzpsleovjuifxi.supabase.co';
 const SUPABASE_KEY='sb_publishable_jWtSwXizl3kJJ9f7x6_KQQ_vXcR9YTw';
-const REST=`${SUPABASE_URL}/rest/v1`;
+const RPC=`${SUPABASE_URL}/rest/v1/rpc`;
 const SOURCES=[
  ['OpenSooq','https://om.opensooq.com/en/sohar/property-for-rent'],
  ['OpenSooq','https://om.opensooq.com/en/sohar/property-for-rent/apartments-for-rent'],
@@ -24,24 +24,21 @@ function published(html){for(const r of [/datePublished["'\s:=>]+["']([^"']+)/i,
 function image(html,base){const m=html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image/i);return m?abs(base,m[1]):''}
 function title(html,fallback){const m=html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)||html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);return clean(m?.[1]||fallback).slice(0,240)}
 function description(html,txt){const m=html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i);return clean(m?.[1]||txt.slice(0,1000)).slice(0,1200)}
-function candidates(html,source,base){const out=[];const re=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;let m;while((m=re.exec(html))&&out.length<15){const href=abs(base,m[1]),label=clean(m[2]);if(!href||label.length<5)continue;if(source==='OpenSooq'&&!/opensooq\.com/i.test(href))continue;if(source==='Sakan'&&!/sakan\.co/i.test(href))continue;if(!/(rent|للإيجار|إيجار|apartment|villa|room|studio|building|office|warehouse|شقة|فيلا|غرفة|استوديو|مبنى|مكتب|مخزن)/i.test(`${href} ${label}`))continue;out.push({href,label})}return[...new Map(out.map(x=>[x.href,x])).values()]}
+function candidates(html,source,base){const out=[];const re=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;let m;while((m=re.exec(html))&&out.length<15){const href=abs(base,m[1]),label=clean(m[2]);if(!href||label.length<5)continue;if(source==='OpenSooq'&&!/opensooq\.com/i.test(href))continue;if(source==='Sakan'&&!/sakan\.co/i.test(href))continue;if(!/(rent|للإيجار|إيجار|apartment|villa|room|studio|building|office|warehouse|شقة|فيلا|غرفة|استوديو|مبنى|مكتب|مخزن)/i.test(`${href} ${label}`))continue;if(/javascript:|mailto:|#/.test(href))continue;out.push({href,label})}return[...new Map(out.map(x=>[x.href,x])).values()]}
 async function get(url){const r=await fetch(url,{...timeout(3500),headers:H,redirect:'follow'});const html=await r.text();if(!r.ok)throw new Error(`HTTP ${r.status}`);return html}
-async function rest(path,opts={}){const r=await fetch(`${REST}/${path}`,{...timeout(5000),...opts,headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json',Prefer:'return=representation',...(opts.headers||{})}});const txt=await r.text();if(!r.ok)throw new Error(`Supabase ${r.status}: ${txt.slice(0,400)}`);return txt?JSON.parse(txt):null}
-async function writeRun(row){try{await rest('sohar_ingestion_runs',{method:'POST',body:JSON.stringify(row)})}catch{}}
-async function scrapePage(source,page){try{const main=await get(page),cs=candidates(main,source,page).slice(0,4);const details=await Promise.allSettled(cs.map(async c=>{const html=await get(c.href),txt=clean(html),n=title(html,c.label),d=description(html,txt);return{id:stableId(source,c.href),type:inferType(`${n} ${d}`),name:n,area:area(`${n} ${d}`),details:d,price:price(`${n} ${d} ${txt.slice(0,5000)}`),period:inferPeriod(`${n} ${d} ${txt.slice(0,5000)}`),phone:phone(txt.slice(0,25000)),platform:source,url:c.href,photo:image(html,c.href),lat:null,lng:null,is_manual:false,manual_override:false,active:true,first_seen:null,last_seen:new Date().toISOString(),published_at:published(html),_detail:true}}));return{candidates:cs.length,ads:details.filter(x=>x.status==='fulfilled').map(x=>x.value),errors:details.filter(x=>x.status==='rejected').map(x=>String(x.reason?.message||x.reason))}}catch(e){return{candidates:0,ads:[],errors:[String(e.message||e)]}}}
+async function rpc(name,body){const r=await fetch(`${RPC}/${name}`,{...timeout(5000),method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json'},body:JSON.stringify(body)});const txt=await r.text();if(!r.ok)throw new Error(`Supabase RPC ${r.status}: ${txt.slice(0,500)}`);return txt?JSON.parse(txt):null}
+async function scrapePage(source,page){try{const main=await get(page),cs=candidates(main,source,page).slice(0,4);const details=await Promise.allSettled(cs.map(async c=>{const html=await get(c.href),txt=clean(html),n=title(html,c.label),d=description(html,txt);return{id:stableId(source,c.href),type:inferType(`${n} ${d}`),name:n,area:area(`${n} ${d}`),details:d,price:price(`${n} ${d} ${txt.slice(0,5000)}`),period:inferPeriod(`${n} ${d} ${txt.slice(0,5000)}`),phone:phone(txt.slice(0,25000)),platform:source,url:c.href,photo:image(html,c.href),lat:null,lng:null,is_manual:false,manual_override:false,active:true,first_seen:null,last_seen:new Date().toISOString(),published_at:published(html)}}));return{candidates:cs.length,ads:details.filter(x=>x.status==='fulfilled').map(x=>x.value),errors:details.filter(x=>x.status==='rejected').map(x=>String(x.reason?.message||x.reason))}}catch(e){return{candidates:0,ads:[],errors:[String(e.message||e)]}}}
 module.exports=async function(req,res){
  const started=new Date().toISOString();
  try{
-  const current=await rest('sohar_ads?select=id,first_seen,published_at,active');
-  const existing=new Map((current||[]).map(x=>[String(x.id),x]));
-  const pageResults=await Promise.all(SOURCES.map(([source,page])=>scrapePage(source,page).then(r=>({source,page,...r}))));
+  const pageResults=await Promise.all(SOURCES.map(([source,page])=>scrapePage(source,page).then(r=>({source,...r}))));
   const stats={};const all=[];for(const r of pageResults){stats[r.source]??={pages:0,candidates:0,details:0,errors:[]};stats[r.source].pages++;stats[r.source].candidates+=r.candidates;stats[r.source].details+=r.ads.length;stats[r.source].errors.push(...r.errors);all.push(...r.ads)}
   const unique=[...new Map(all.map(a=>[a.id,a])).values()];
-  for(const a of unique){const old=existing.get(a.id);a.first_seen=old?.first_seen||a.last_seen;if(!a.published_at)a.published_at=old?.published_at||null;delete a._detail}
-  for(let i=0;i<unique.length;i+=20)await rest('sohar_ads?on_conflict=id',{method:'POST',body:JSON.stringify(unique.slice(i,i+20)),headers:{Prefer:'resolution=merge-duplicates,return=minimal'}});
-  const inserted=unique.filter(a=>!existing.has(a.id)).length,updated=unique.length-inserted,errors=Object.values(stats).reduce((n,s)=>n+s.errors.length,0);
-  const run={started_at:started,finished_at:new Date().toISOString(),status:'success',source:'all',seen_count:unique.length,inserted_count:inserted,updated_count:updated,error_count:errors,details:{stats}};
-  await writeRun(run);
-  return res.status(200).json({ok:true,scheduled:'06:00 UTC / 10:00 Asia-Muscat',seen:unique.length,new_ads:inserted,updated_ads:updated,error_count:errors,sources:stats,finished_at:run.finished_at});
- }catch(e){const run={started_at:started,finished_at:new Date().toISOString(),status:'error',source:'all',seen_count:0,inserted_count:0,updated_count:0,error_count:1,details:{error:String(e.message||e)}};await writeRun(run);return res.status(500).json({ok:false,error:String(e.message||e)})}
+  let seen=0,inserted=0,updated=0,rejected=0;
+  for(let i=0;i<unique.length;i+=20){const result=await rpc('sohar_ingest_ads',{p_ads:unique.slice(i,i+20),p_source:'all'});seen+=result?.seen||0;inserted+=result?.inserted||0;updated+=result?.updated||0;rejected+=result?.rejected||0}
+  const errorCount=Object.values(stats).reduce((n,s)=>n+s.errors.length,0)+rejected;
+  const run={started_at:started,finished_at:new Date().toISOString(),status:'success',source:'all',seen_count:seen,inserted_count:inserted,updated_count:updated,error_count:errorCount,details:{stats,rejected}};
+  await rpc('sohar_log_ingestion_run',{p_run:run});
+  return res.status(200).json({ok:true,scheduled:'06:00 UTC / 10:00 Asia-Muscat',seen,new_ads:inserted,updated_ads:updated,error_count:errorCount,sources:stats,finished_at:run.finished_at});
+ }catch(e){const run={started_at:started,finished_at:new Date().toISOString(),status:'error',source:'all',seen_count:0,inserted_count:0,updated_count:0,error_count:1,details:{error:String(e.message||e)}};try{await rpc('sohar_log_ingestion_run',{p_run:run})}catch{};return res.status(500).json({ok:false,error:String(e.message||e)})}
 };
