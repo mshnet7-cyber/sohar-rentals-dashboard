@@ -11,15 +11,14 @@ const SOURCES=[
  ['Sakan','https://om.sakan.co/en/rent/apartment'],
  ['Sakan','https://om.sakan.co/en/rent/villa']
 ];
-const H={'user-agent':'Mozilla/5.0 (compatible; SoharRentalIndexer/1.6)','accept-language':'ar,en;q=0.8'};
+const H={'user-agent':'Mozilla/5.0 (compatible; SoharRentalIndexer/1.7)','accept-language':'ar,en;q=0.8'};
 const timeout=ms=>({signal:AbortSignal.timeout(ms)});
 function clean(x){return String(x??'').replace(/&nbsp;|\u00a0/gi,' ').replace(/&amp;/gi,'&').replace(/&#39;/gi,"'").replace(/&quot;/gi,'"').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}
 function abs(base,href){try{return new URL(href,base).href}catch{return''}}
 function stableId(source,url){const u=new URL(url),raw=`${source}|${u.hostname}|${u.pathname}`.toLowerCase();let h=2166136261;for(let i=0;i<raw.length;i++){h^=raw.charCodeAt(i);h=Math.imul(h,16777619)}return`${source.toLowerCase()}-${(h>>>0).toString(36)}`}
 function inferType(t){t=t.toLowerCase();if(/warehouse|مخزن|مستودع/.test(t))return'مخزن';if(/office|مكتب/.test(t))return'مكتب';if(/building|عمارة|عماره|مبنى/.test(t))return'مبنى';if(/villa|فيلا/.test(t))return'فيلا';if(/room|غرفة/.test(t))return'غرفة';if(/studio|استوديو/.test(t))return'استوديو';return'شقة'}
 function inferPeriod(t){t=t.toLowerCase();if(/daily|يومي/.test(t))return'يومي';if(/weekly|أسبوعي|اسبوعي/.test(t))return'أسبوعي';if(/yearly|annual|سنوي/.test(t))return'سنوي';if(/monthly|month|شهري/.test(t))return'شهري';return''}
-function pickPrice(s){const a=[...s.matchAll(/(?:OMR|ريال(?:\s+عماني)?|ر\.ع\.?)[^0-9]{0,10}(\d{1,5}(?:\.\d+)?)/gi),...s.matchAll(/(\d{1,5}(?:\.\d+)?)[^0-9]{0,10}(?:OMR|ريال(?:\s+عماني)?|ر\.ع\.?)/gi)].map(m=>Number(m[1])).filter(n=>n>=5&&n<=50000);return a.length?String(a[0]):''}
-function price(t){const s=String(t??'');const direct=pickPrice(s);if(direct)return direct;const json=[...s.matchAll(/(?:["'](?:price|amount|rentalPrice)["']\s*:\s*["']?)(\d{1,5}(?:\.\d+)?)/gi)].map(m=>Number(m[1])).find(n=>n>=5&&n<=50000);return json==null?'':String(json)}
+function price(t){const s=String(t??'');const a=[...s.matchAll(/(?:OMR|ريال(?:\s+عماني)?|ر\.ع\.?)[^0-9]{0,10}(\d{1,5}(?:\.\d+)?)/gi),...s.matchAll(/(\d{1,5}(?:\.\d+)?)[^0-9]{0,10}(?:OMR|ريال(?:\s+عماني)?|ر\.ع\.?)/gi)].map(m=>Number(m[1])).filter(n=>n>=5&&n<=50000);return a.length?String(a[0]):''}
 function area(t){const a=['Al Tarif','At Turayf','Al Hambar','Alhambar','Al Multaqa','Falaj Al Qabail','As Suwayhrah','Al Wiqaybah','Ghayl Ash Shabul','Al Ghushbah','Awtib','Sohar Corniche','الطريف','الحمر','المتلقى','الملتقى','فلج القبائل','السويحرة','الويقبية','غضي الشبول','الغشبة','عوتب','كورنيش صحار'];for(const x of a)if(t.toLowerCase().includes(x.toLowerCase()))return x;return'صحار'}
 function phone(t){const tel=[...t.matchAll(/(?:href|data-href)=["']tel:\s*\+?([0-9][0-9\s-]{7,12})["']/gi)].map(m=>m[1].replace(/\D/g,'')).find(d=>/^\d{8}$/.test(d));if(tel)return tel;for(const near of t.matchAll(/(?:phone|mobile|contact|call|هاتف|جوال|اتصل|تواصل)[^0-9]{0,40}((?:\+968\s*)?(?:\d[\s-]?){8,10})/gi)){const d=near[1].replace(/\D/g,'');if(/^\d{8}$/.test(d))return d}return''}
 function published(html){for(const r of [/datePublished["'\s:=>]+["']([^"']+)/i,/article:published_time["'\s]+content=["']([^"']+)/i]){const m=html.match(r);if(m&&!Number.isNaN(Date.parse(m[1])))return new Date(m[1]).toISOString()}return null}
